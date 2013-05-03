@@ -51,6 +51,7 @@ shmcfg = [ShmCfg(:svar1, Int32, 64*1024), ShmCfg(:svar2, Uint8, (100,100))]
 - Start tasks. 
 ```
 h = start_stasks(shmcfg)
+ntasks = count_stasks(h)
 ```
 - The tasks are started and symbols pointing to shared memory segments are added as task local storage. A handle is returned.
 - The shared memory segments are also mapped in the current tasks local storage.
@@ -59,7 +60,6 @@ h = start_stasks(shmcfg)
 
 - Prepare arguments for our pmap call
 ```
-ntasks = count_stasks(h)
 offset_list = [i for i in 1:ntasks]
 ntasks_list = [ntasks for i in 1:ntasks]
 ```
@@ -67,7 +67,7 @@ ntasks_list = [ntasks for i in 1:ntasks]
 - Execute our function in parallel.
 ```
 resp = pmap_stasks(h, (offset, ntasks) -> begin
-                        # bind task local storage variables
+                        # get local refernces to shared memory mapped arrays
                         svar1 = task_local_storage(:svar1)
                         svar2 = task_local_storage(:svar2)
                         
@@ -82,6 +82,15 @@ resp = pmap_stasks(h, (offset, ntasks) -> begin
                     
                     offset_list, ntasks_list)
 ```
+
+- Access shared memory segments and view changes
+
+```
+svar1 = task_local_storage(:svar1)
+println(svar1)
+```
+svar1 will the values as updated by the Server Tasks.
+
 
 - Finally stop the tasks
 
