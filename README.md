@@ -132,9 +132,4 @@ of the form ```/dev/julia_<shmpfx>_<symbol_name>```
 
 
 
-
-
-Coming soon
-===========
-- Named Tasks
-- Map Reduce on HDFS
+s
