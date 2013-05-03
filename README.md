@@ -107,7 +107,7 @@ Exported functions for ServerTasks
 Returns a handle to the set of ServerTasks.
 
 ```pmap_stasks(h::STasks, f::Function, lsts...)``` is similar to pmap, except that the first parameter is the handle returned by start_tasks. 
-NOTE: that the length of lsts and number of ServerTasks must be identical. 
+NOTE: that the length of ```lsts``` and number of ServerTasks must be identical. 
 
 ```stop_stasks(h::STasks, shmcfg=false, shmpfx=false)``` stops all tasks and also frees the shared memory
 
@@ -128,7 +128,7 @@ NOTE: For a single run, it is important that shmpfx is passed with same value to
 Under Linux, you can view the shared memory mappings under /dev/shm
 In the event of abnormal program termination, where unlink_shm has not been called it is important 
 to manually delete all segments allocated by the program. The name of the segments will be 
-of the form /dev/julia_<shmpfx>_<symbol_name>
+of the form ```/dev/julia_<shmpfx>_<symbol_name>```
 
 
 
