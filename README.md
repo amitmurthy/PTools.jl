@@ -8,7 +8,7 @@ Currently the following are available.
 - ServerTasks - These are long running tasks that simply processes incoming requests in a loop. Useful in situations where 
   state needs to be maintained across function calls. State can be maintained and retrieved using the task_local_storage methods.
   
-- SharedMemory - Useful in the event of a parallel procesing on a single multi-core machine. Avoids the overhead associated 
+- SharedMemory - Useful in the event of parallel procesing on a single large multi-core machine. Avoids the overhead associated 
   with sending/recieving large data sets.
   
 
@@ -18,7 +18,7 @@ Typical usage pattern will be
 
 - ```start_stasks``` - Start Server Tasks, optionally with shared memory mappings.
 
-- Execute a series of functions in parallel on these tasks using ```pmap_stasks```
+- Execute a series of functions in parallel on these tasks using multiple invocations of ```pmap_stasks```
 
 - SomeFunction 
 - SomeOtherFunction
@@ -27,10 +27,10 @@ Typical usage pattern will be
 .
 .
 
-- ```stop_stasks``` - Stop Tasks
+- ```stop_stasks``` - Stop all Server Tasks and free shared memory if required.
 
 
-Each of the above functions can store and retrive state information using the task_local_storage functions.
+The user specified functions in pmap_stasks can store and retrieve state information using the task_local_storage functions.
 
   
   
@@ -39,6 +39,7 @@ Example
 The best way to understand what is available is by example:
 
 - specify shared memory configuration. 
+
 ```
 using PTools
 
