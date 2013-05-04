@@ -130,6 +130,3 @@ In the event of abnormal program termination, where unlink_shm has not been call
 to manually delete all segments allocated by the program. The name of the segments will be 
 of the form ```/dev/julia_<shmpfx>_<symbol_name>```
 
-
-
-s
