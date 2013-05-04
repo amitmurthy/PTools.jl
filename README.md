@@ -12,6 +12,13 @@ Currently the following are available.
   with sending/recieving large data sets.
   
 
+Platforms
+=========
+- Tested on Ubuntu 13.04
+- Should work on OSX
+- SharedMemory will not work on Windows. ServerTasks should.
+
+  
 Usage
 =====
 Typical usage pattern will be 
