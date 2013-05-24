@@ -14,6 +14,7 @@ type ShmCfg
 end
 
 function pmap_shm_create(map_list, shmpfx="")
+    unlink_shm(map_list, shmpfx)
     for i in 1:nprocs()
         remotecall_fetch(i, setup_shm, map_list, shmpfx)
     end
@@ -48,9 +49,15 @@ function setup_shm(map_list, shmpfx="", map_global=false)
         fd_mem = ccall(:shm_open, Int, (Ptr{Uint8}, Int, Int), get_shmem_name(shmpfx, sname), JL_O_CREAT | JL_O_RDWR, S_IRUSR | S_IWUSR)
         if !(fd_mem > 0) error("shm_open() failed") end
 
-        rc = ccall(:ftruncate, Int, (Int, Int), fd_mem, numb)
-#        println(string(myid()) * "@ftruncate, rc : " * string(rc) * ", fd_mem : " * string(fd_mem))
-        if !(rc == 0) error("ftruncate() failed") end
+
+        if(1 == myid())
+            rc = ccall(:ftruncate, Int, (Int, Int), fd_mem, numb)
+    #        println(string(myid()) * "@ftruncate, rc : " * string(rc) * ", fd_mem : " * string(fd_mem))
+            if !(rc == 0) 
+               ec = errno()
+               error("ftruncate() failed : $ec") 
+            end
+        end
 
         x = ccall(:mmap, Ptr{Void}, (Ptr{Void}, Int, Int32, Int32, Int32, FileOffset), C_NULL, numb, PROT_READ | PROT_WRITE, MAP_SHARED, fd_mem, 0)
 #        println(string(myid()) * "@mmap, x : " * string(x) * ", fd_mem : " * string(fd_mem)* ", numb : " * string(numb))

@@ -46,6 +46,7 @@ function start_stasks(shmcfg=false, shmpfx=false)
     [remotecall(i+pid_add, stask_run, stasks[i]) for i in 1:length(stasks)]
     
     if shmcfg != false
+        unlink_shm(shmcfg, shmpfx)
         # local
         setup_shm(shmcfg, shmpfx)
         
