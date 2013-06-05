@@ -1,21 +1,10 @@
 using Base.Collections
 
-import Base.Collections.dequeue!
-
-export  dequeue!,
-        num_remotes, prep_remotes,
+export  num_remotes, prep_remotes,
         queue_worker_task, dequeue_worker_task, set_priorities, 
         WorkerTask, QueuedWorkerTask
 
-function dequeue!(pq::PriorityQueue, key)
-         !haskey(pq.index, key) && return
-         idx = delete!(pq.index, key)
-         splice!(pq.xs, idx)
-         for (k,v) in pq.index
-           (v >= idx) && (pq.index[k] = (v-1))
-         end
-     key
-end
+safe_dequeue!(pq::PriorityQueue, key) = try dequeue!(pq,key) end
 
 typealias FuncNone  Union(Function,Nothing)
 
@@ -97,13 +86,13 @@ function _queue_worker_task(t::QueuedWorkerTask, s::Symbol)
 end
 
 dequeue_worker_task(t::QueuedWorkerTask) = _dequeue_worker_task(t::QueuedWorkerTask, t.target)
-_dequeue_worker_task(t::QueuedWorkerTask, procid::Int) = haskey(_procid_tasks, procid) && dequeue!(_procid_tasks[procid], t)
+_dequeue_worker_task(t::QueuedWorkerTask, procid::Int) = haskey(_procid_tasks, procid) && safe_dequeue!(_procid_tasks[procid], t)
 _dequeue_worker_task(t::QueuedWorkerTask, procid_list::Vector{Int}) = for procid in procid_list _dequeue_worker_task(t, procid) end
-_dequeue_worker_task(t::QueuedWorkerTask, machine::ASCIIString) = haskey(_machine_tasks, machine) && dequeue!(_machine_tasks[machine], t)
+_dequeue_worker_task(t::QueuedWorkerTask, machine::ASCIIString) = haskey(_machine_tasks, machine) && safe_dequeue!(_machine_tasks[machine], t)
 _dequeue_worker_task(t::QueuedWorkerTask, machine_list::Vector{ASCIIString}) = for machine in machine_list _dequeue_worker_task(t, machine) end
 function _dequeue_worker_task(t::QueuedWorkerTask, s::Symbol)
     (:wrkr_all == s) && return _dequeue_worker_task(t, [1:num_remotes()])
-    (:wrkr_any == s) && return dequeue!(_any_tasks, t)
+    (:wrkr_any == s) && return safe_dequeue!(_any_tasks, t)
     error("unknown queue $(s)")
 end
 function dequeue_worker_task(filter_fn::Function)
