@@ -132,7 +132,7 @@ function _start_feeders()
 end
 
 function _fetch_tasks(proc_id::Int, ip::String, hn::String, peek::Bool=false)
-    v = _any_tasks
+    v = (proc_id == 1) ? nothing : _any_tasks   # use only worker nodes
     ((v == nothing) || (0 == length(v))) && haskey(_procid_tasks, proc_id) && (v = _procid_tasks[proc_id])
     ((v == nothing) || (0 == length(v))) && haskey(_machine_tasks, ip) && (v = _machine_tasks[ip])
     ((v == nothing) || (0 == length(v))) && haskey(_machine_tasks, hn) && (v = _machine_tasks[hn])
