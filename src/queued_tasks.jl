@@ -45,6 +45,7 @@ type QueuedWorkerTask
     callback::FuncNone
     target::Union(Int,ASCIIString,Symbol,Vector{ASCIIString},Vector{Int})
     qtime::Float64
+    prio::Float64
     function QueuedWorkerTask(wtask::WorkerTask, remote_method::Function, callback::FuncNone, target::Union(Int,ASCIIString,Symbol,Vector{ASCIIString},Vector{Int}))
         new(wtask, remote_method, callback, target, time())
     end
@@ -113,9 +114,9 @@ end
 ##
 # scheduler function
 function set_priorities(calc_prio::Function)
-    for (k,v) in _machine_tasks for (k1,v1) in v v[k1] = calc_prio(k, k1, v1) end end
-    for (k,v) in _procid_tasks for (k1,v1) in v v[k1] = calc_prio(k, k1, v1) end end
-    for (k1, v1) in _any_tasks _any_tasks[k1] = calc_prio(:wrkr_any, k1, v1) end
+    for (k,v) in _machine_tasks for (k1,v1) in v v[k1] = k1.prio = calc_prio(k, k1, v1) end end
+    for (k,v) in _procid_tasks for (k1,v1) in v v[k1] = k1.prio = calc_prio(k, k1, v1) end end
+    for (k1, v1) in _any_tasks _any_tasks[k1] = k1.prio = calc_prio(:wrkr_any, k1, v1) end
 end
 
 const _feeders = Dict{Int,RemoteRef}()
@@ -131,16 +132,22 @@ function _start_feeders()
     end
 end
 
-function _fetch_tasks(proc_id::Int, ip::String, hn::String, peek::Bool=false)
-    v = (proc_id == 1) ? nothing : _any_tasks   # use only worker nodes
-    ((v == nothing) || (0 == length(v))) && haskey(_procid_tasks, proc_id) && (v = _procid_tasks[proc_id])
-    ((v == nothing) || (0 == length(v))) && haskey(_machine_tasks, ip) && (v = _machine_tasks[ip])
-    ((v == nothing) || (0 == length(v))) && haskey(_machine_tasks, hn) && (v = _machine_tasks[hn])
+function _fetch_tasks(proc_id::Int, ip::String, hn::String, onlypeek::Bool=false)
+    v = PriorityQueue{PriorityQueue,Float64}()
+    function add_to_fp(q)
+        (length(q) > 0) && (v[q] = peek(q)[2])
+    end
+
+    !((proc_id == 1) && (num_remotes() > 1)) && add_to_fp(_any_tasks)
+    haskey(_procid_tasks, proc_id) && add_to_fp(_procid_tasks[proc_id])
+    haskey(_machine_tasks, ip) && add_to_fp(_machine_tasks[ip])
+    haskey(_machine_tasks, hn) && add_to_fp(_machine_tasks[hn])
+
     ((v == nothing) || (0 == length(v))) && return nothing
 
-    peek && (return ((length(v) > 0) ? length(v) : nothing))
+    onlypeek && (return ((length(v) > 0) ? peek(peek(v)[1]) : nothing))
 
-    qtask = dequeue!(v)
+    qtask = dequeue!(dequeue!(v))
     (:wrkr_all != qtask.target) && dequeue_worker_task(qtask)
     qtask
 end
@@ -157,12 +164,16 @@ function _push_to_worker(procid)
         wtask = qtask.wtask
 
         # call method at worker
-        _debug && println("calling procid $(procid) for task $(wtask)")
+        _debug && println("-> $(procid) $(wtask)")
         ret = remotecall_fetch(procid, qtask.remote_method, wtask)
-        _debug && println("returned from call to procid $(procid) for task $(wtask)")
+        _debug && println("<- $(procid) $(wtask)")
 
         try
-            (nothing != qtask.callback) && (qtask.callback(wtask, ret))
+            if(nothing != qtask.callback) 
+                _debug && println("0> $(procid) $(wtask) $(typeof(ret))")
+                qtask.callback(wtask, ret)
+                _debug && println("<0 $(procid) $(wtask) $(typeof(ret))")
+            end
         catch ex
             _debug && println("error in callback $(ex)")
             _debug && println("returned value: $(ret)")
