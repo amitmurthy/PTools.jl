@@ -45,7 +45,6 @@ type QueuedWorkerTask
     callback::FuncNone
     target::Union(Int,ASCIIString,Symbol,Vector{ASCIIString},Vector{Int})
     qtime::Float64
-    prio::Float64
     function QueuedWorkerTask(wtask::WorkerTask, remote_method::Function, callback::FuncNone, target::Union(Int,ASCIIString,Symbol,Vector{ASCIIString},Vector{Int}))
         new(wtask, remote_method, callback, target, time())
     end
@@ -58,6 +57,12 @@ const _machine_tasks = Dict{ASCIIString, PriorityQueue{QueuedWorkerTask,Float64}
 const _procid_tasks = Dict{Int, PriorityQueue{QueuedWorkerTask, Float64}}()
 const _any_tasks = PriorityQueue{QueuedWorkerTask,Float64}()
 
+function _remap_macs_to_procs(macs)
+    available_macs = filter(x->contains(_all_remote_names, x), macs)
+    (length(available_macs) == 0) && (available_macs = filter(x->contains(_all_remote_names, x), map(x->split(x,".")[1], macs)))
+    (length(available_macs) == 0) && push!(available_macs, "")
+    available_macs
+end
 function queue_worker_task(t::QueuedWorkerTask) 
     _queue_worker_task(t, t.target)
     _start_feeders()
@@ -71,15 +76,7 @@ function _queue_worker_task(t::QueuedWorkerTask, machine::ASCIIString)
     !haskey(_machine_tasks, machine) && (_machine_tasks[machine] = PriorityQueue{QueuedWorkerTask,Float64}())
     (_machine_tasks[machine])[t] = Inf
 end
-function _queue_worker_task(t::QueuedWorkerTask, machine_list::Vector{ASCIIString}) 
-    function remap_macs_to_procs(macs)
-        available_macs = filter(x->contains(_all_remote_names, x), macs)
-        (length(available_macs) == 0) && (available_macs = filter(x->contains(_all_remote_names, x), map(x->split(x,".")[1], macs)))
-        (length(available_macs) == 0) && push!(available_macs, "")
-        available_macs
-    end
-    for machine in remap_macs_to_procs(machine_list) _queue_worker_task(t, machine) end
-end
+_queue_worker_task(t::QueuedWorkerTask, machine_list::Vector{ASCIIString}) = for machine in _remap_macs_to_procs(machine_list) _queue_worker_task(t, machine) end
 function _queue_worker_task(t::QueuedWorkerTask, s::Symbol)
     (:wrkr_all == s) && return _queue_worker_task(t::QueuedWorkerTask, [1:num_remotes()])
     (:wrkr_any == s) && return (_any_tasks[t] = Inf)
@@ -90,7 +87,7 @@ dequeue_worker_task(t::QueuedWorkerTask) = _dequeue_worker_task(t::QueuedWorkerT
 _dequeue_worker_task(t::QueuedWorkerTask, procid::Int) = haskey(_procid_tasks, procid) && safe_dequeue!(_procid_tasks[procid], t)
 _dequeue_worker_task(t::QueuedWorkerTask, procid_list::Vector{Int}) = for procid in procid_list _dequeue_worker_task(t, procid) end
 _dequeue_worker_task(t::QueuedWorkerTask, machine::ASCIIString) = haskey(_machine_tasks, machine) && safe_dequeue!(_machine_tasks[machine], t)
-_dequeue_worker_task(t::QueuedWorkerTask, machine_list::Vector{ASCIIString}) = for machine in machine_list _dequeue_worker_task(t, machine) end
+_dequeue_worker_task(t::QueuedWorkerTask, machine_list::Vector{ASCIIString}) = for machine in _remap_macs_to_procs(machine_list) _dequeue_worker_task(t, machine) end
 function _dequeue_worker_task(t::QueuedWorkerTask, s::Symbol)
     (:wrkr_all == s) && return _dequeue_worker_task(t, [1:num_remotes()])
     (:wrkr_any == s) && return safe_dequeue!(_any_tasks, t)
@@ -114,9 +111,9 @@ end
 ##
 # scheduler function
 function set_priorities(calc_prio::Function)
-    for (k,v) in _machine_tasks for (k1,v1) in v v[k1] = k1.prio = calc_prio(k, k1, v1) end end
-    for (k,v) in _procid_tasks for (k1,v1) in v v[k1] = k1.prio = calc_prio(k, k1, v1) end end
-    for (k1, v1) in _any_tasks _any_tasks[k1] = k1.prio = calc_prio(:wrkr_any, k1, v1) end
+    for (k,v) in _machine_tasks for (k1,v1) in v v[k1] = calc_prio(k, k1, v1) end end
+    for (k,v) in _procid_tasks for (k1,v1) in v v[k1] = calc_prio(k, k1, v1) end end
+    for (k1, v1) in _any_tasks _any_tasks[k1] = calc_prio(:wrkr_any, k1, v1) end
 end
 
 const _feeders = Dict{Int,RemoteRef}()
