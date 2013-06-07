@@ -1,7 +1,7 @@
 using Base.Collections
 
 export  num_remotes, prep_remotes,
-        queue_worker_task, dequeue_worker_task, set_priorities, 
+        execute_worker_task, queue_worker_task, dequeue_worker_task, set_priorities, 
         WorkerTask, QueuedWorkerTask
 
 safe_dequeue!(pq::PriorityQueue, key) = try dequeue!(pq,key) end
@@ -63,6 +63,19 @@ function _remap_macs_to_procs(macs)
     (length(available_macs) == 0) && push!(available_macs, "")
     available_macs
 end
+
+function execute_worker_task(t::QueuedWorkerTask)
+    r = RemoteRef()
+    function cb(w::WorkerTask, ret)
+        put(r, ret)
+    end
+    t.callback = cb
+    queue_worker_task(t)
+    result = fetch(r)
+    isa(result, Exception) && throw(result)
+    result
+end
+
 function queue_worker_task(t::QueuedWorkerTask) 
     _queue_worker_task(t, t.target)
     _start_feeders()

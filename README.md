@@ -10,7 +10,8 @@ Currently the following are available.
   
 - SharedMemory - Useful in the event of parallel procesing on a single large multi-core machine. Avoids the overhead associated 
   with sending/recieving large data sets.
-  
+
+- [QueuedTasks](QUEUEDTASKS.md) - Schedule tasks to be executed by remote worker processes. Set/change priorities on the task to control order of execution.
 
 Platforms
 =========
