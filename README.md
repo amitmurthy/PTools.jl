@@ -5,6 +5,8 @@ A collection of utilities for parallel computation in Julia
 
 Currently the following are available.
 
+- ```pfork``` - Parallelism using the UNIX ```fork``` system call.
+
 - ServerTasks - These are long running tasks that simply processes incoming requests in a loop. Useful in situations where 
   state needs to be maintained across function calls. State can be maintained and retrieved using the task_local_storage methods.
   
@@ -18,10 +20,36 @@ Platforms
 - Tested on Ubuntu 13.04
 - Should work on OSX
 - SharedMemory will not work on Windows. ServerTasks should.
+- pfork is a UNIX only implementation
+
 
   
-Usage
+pfork
 =====
+
+- It uses the UNIX ```fork()``` system call to execute a function in parallel.
+
+- ```pfork(nforks::Integer, f::Function, args...)``` forks ```nforks``` times and executes ```f``` in each child.
+
+- The first parameter to ```f``` is the forked child index.
+
+- ```pfork``` returns an array of size ```nforks```, where the nth element is the value returned by the nth forked child.
+
+- Passing huge amounts of data to the function in the child process is a non-issue since it is a fork.
+
+- In the event the parent process has a shared memory segment, the children have full visibility 
+  into the same and can modify the segment in place. They don't have to bother with returning huge 
+  amounts of data either.
+  
+- Currently can only be executed when nprocs() == 1, i.e., this model is incompatible with the worker model.
+
+- Unpredictable behavior if the function to be executed in the forked children calls yield() AND other I/O tasks 
+  are concurrently active. Can be used only where f is fully compute bound.
+
+
+
+Usage of Server Tasks
+=====================
 Typical usage pattern will be 
 
 - ```start_stasks``` - Start Server Tasks, optionally with shared memory mappings.
@@ -42,8 +70,8 @@ The user specified functions in pmap_stasks can store and retrieve state informa
 
   
   
-Example
-=======
+Example for shared memory and server tasks
+==========================================
 The best way to understand what is available is by example:
 
 - specify shared memory configuration. 
