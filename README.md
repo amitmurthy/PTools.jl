@@ -5,6 +5,8 @@ A collection of utilities for parallel computation in Julia
 
 Currently the following are available.
 
+- ```WorkerSet``` - The ability to logically pool a set of workers for specific tasks.
+
 - ```pfork``` - Parallelism using the UNIX ```fork``` system call.
 
 - ServerTasks - These are long running tasks that simply processes incoming requests in a loop. Useful in situations where 
@@ -23,6 +25,28 @@ Platforms
 - pfork is a UNIX only implementation
 
 
+WorkerSet
+=========
+- A WorkerSet is just an array of process ids
+
+- A WorkerSet is created using ```WorkerSet(w::Array{Integer}, mode)``` where ```mode``` is either of 
+  WS_MODE_RR or WS_MODE_FF where 
+  
+- WS_MODE_RR enables the workers to be used in a round-robin fashion
+
+- WS_MODE_FF tracks which of the workers are busy and sends the request only to a free one.
+  It queues the requests if all the workers in the set are busy. 
+  
+- The ```remotecall*``` functions have been extended to support WorkerSet
+
+```
+remotecall(ws::WorkerSet, f, args...) 
+remotecall_fetch(ws::WorkerSet, f, args...) 
+remotecall_wait(ws::WorkerSet, f, args...) 
+```
+
+- The behaviour is the same, except that the functions are executed only on the processes belonging to the 
+  WorkerSet and follow the model as specified by ```mode```.
   
 pfork
 =====
