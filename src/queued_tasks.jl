@@ -129,12 +129,12 @@ function set_priorities(calc_prio::Function)
     for (k1, v1) in _any_tasks _any_tasks[k1] = calc_prio(:wrkr_any, k1, v1) end
 end
 
-const _feeders = Dict{Int,RemoteRef}()
+const _feeders = Dict{Int,Task}()
 function _start_feeders()
     _debug && println("starting feeders...")
     # start feeder tasks if required
     for procid in 1:num_remotes()
-        haskey(_feeders, procid) && !isready(_feeders[procid]) && continue
+        haskey(_feeders, procid) && !istaskdone(_feeders[procid]) && continue
         ip, hn = map(x->x[procid], _remotes)
         (nothing == _fetch_tasks(procid, ip, hn, true)) && continue
         _debug && println("\tstarting feeder for $(procid)")
