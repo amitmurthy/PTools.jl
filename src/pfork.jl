@@ -25,7 +25,7 @@ function pfork(n::Integer, f::Function, args...)
                 # seed the random number generator differently for each child...
                 srand([uint32(time()), uint32(i)])
                 
-                rv = apply(f, i, args...)
+                rv = f(i, args...)
                 
                 iob=IOBuffer()
                 if rv == nothing

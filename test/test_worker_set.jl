@@ -1,11 +1,10 @@
+addprocs(7)
+
 using PTools
 using Base.Test
 
 
 # remove all workers
-np1 = nprocs()
-
-addprocs(7)
 w = workers()
 
 ws1 = WorkerSet(w[1:3], WS_MODE_RR)
@@ -46,9 +45,6 @@ end
 println("Mode FF PASSED")
 
 
-np2 = nprocs()
-@test np2 == (np1 + 7)
-
 
 # test regular pmap and @parallel with all processes.
 pmap_resp = pmap(x -> myid(), 1:nprocs())
@@ -57,7 +53,4 @@ for i in pmap_resp
     @test contains(defprocs, i)
 end
 
-rmprocs(workers())
-np3 = nprocs()
 
-@test np1 == np3

@@ -101,9 +101,8 @@ function manage_q(ws::WorkerSet)
         end
         
         id = shift!(ws.freeset)
-        @async begin
+        @async let id=id,c=c,rr=rr
             if t == :FETCH
-#                println("Starting task execution on $id")
                 resp = remotecall_fetch(id, c)
             else
                 resp = remotecall_wait(id, c)
