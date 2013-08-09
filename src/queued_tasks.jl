@@ -21,8 +21,8 @@ function prep_remotes(force::Bool=false)
     ips = Array(ASCIIString, n-1)
     hns = Array(ASCIIString, n-1)
     for midx in 2:n
-        ips[midx-1] = remotecall_fetch(midx, getipaddr)
-        hns[midx-1] = remotecall_fetch(midx, gethostname)
+        ips[midx-1] = string(remotecall_fetch(midx, getipaddr))
+        hns[midx-1] = string(remotecall_fetch(midx, gethostname))
     end
 
     for x in (ips, hns)
