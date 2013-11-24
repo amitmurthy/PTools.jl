@@ -1,4 +1,4 @@
-export pfork
+export pfork, pfork_shm
 
 function pfork(n::Integer, f::Function, args...)
     if nprocs() > 1
@@ -78,8 +78,8 @@ function pfork(n::Integer, f::Function, args...)
                 #close the read end
                 ccall(:close, Cint, (Cint, ),  pipes[i][1])
                 
-                retcode = Cint[0]
-                cpid_exited = ccall(:waitpid, Cint, (Cint, Ptr{Cint}, Cint), cpids[i], retcode, 0)
+                #retcode = Cint[0]
+                #cpid_exited = ccall(:waitpid, Cint, (Cint, Ptr{Cint}, Cint), cpids[i], retcode, 0)
                 # Sometimes cpid_exited is -1 and errno is ECHILD, removing check on return value 
                 # of waitpid for now.
 #                assert(cpid_exited == cpids[i])
@@ -97,5 +97,58 @@ function pfork(n::Integer, f::Function, args...)
     
     responses
 end
+
+pfork_shm(n::Int, return_type::Type, return_size::Tuple, f::Function, args...) =
+    pfork_shm(n::Int, {(return_type, return_size)}, f::Function, args...)[1]
+# forks the current process n times, invoking f, 
+# and providing a shared memory segment for the return value
+# 
+# n                  ... number of forks. passed to pfork
+# sharedmems         ... type of the return value. passed to ShmCfg
+# retreturn_sizesize ... size of the return value. passed to ShmCfg
+# f                  ... function with the signature is f(ind, result, args...)
+#                        where result is a shared memory segment of type return_type 
+#                        and size return_size
+
+function pfork_shm(n::Int, shmems::Array, f::Function, args...)
+  # f                  ... function with the signature is f(ind, result1, .., resultN, args...)
+
+  map(x->assert(isa(x,Tuple)),shmems)
+
+  # set up the shared memory segment
+  return_shms = map(x->ShmCfg(gensym("pfork_shm"),x[1],x[2]), shmems)
+  unlink_shm(return_shms)
+  setup_shm(return_shms)
+
+  # wrap f, passing the return memory segment
+  function g(ind, a...)
+    rets = map(x->task_local_storage(x.sname), return_shms)
+    #@show rets tuple(ind, rets..., a...)
+    f(ind, rets..., a...)
+    nothing
+  end
+
+  # invoke the function
+  #@show n g args
+  pfork(n, g, args...)
+
+  # release the shared memory segment and return
+  unlink_shm(return_shms)
+  r = map(x->task_local_storage(x.sname), return_shms)
+  map(x->task_local_storage(x.sname, nothing), return_shms)
+  r
+end
+
+
+
+
+
+
+
+
+
+
+
+
 
 
