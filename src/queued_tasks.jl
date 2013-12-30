@@ -58,8 +58,8 @@ const _procid_tasks = Dict{Int, PriorityQueue{QueuedWorkerTask, Float64}}()
 const _any_tasks = PriorityQueue{QueuedWorkerTask,Float64}()
 
 function _remap_macs_to_procs(macs)
-    available_macs = filter(x->contains(_all_remote_names, x), macs)
-    (length(available_macs) == 0) && (available_macs = filter(x->contains(_all_remote_names, x), map(x->split(x,".")[1], macs)))
+    available_macs = filter(x->(x in _all_remote_names), macs)
+    (length(available_macs) == 0) && (available_macs = filter(x->(x in _all_remote_names), map(x->split(x,".")[1], macs)))
     (length(available_macs) == 0) && push!(available_macs, "")
     available_macs
 end
