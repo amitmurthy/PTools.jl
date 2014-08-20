@@ -1,5 +1,5 @@
 using Base.Collections
-import Base.Order: Forward
+import Base.Order: ForwardOrdering
 
 export  num_remotes, prep_remotes,
         execute_worker_task, queue_worker_task, dequeue_worker_task, set_priorities, 
@@ -55,7 +55,7 @@ end
 # Queues for distributing tasks
 # TODO: use priorityqueues
 
-const PQTYPE = VERSION < v"0.4-" ? PriorityQueue{QueuedWorkerTask,Float64} : PriorityQueue{QueuedWorkerTask,Float64, Forward}
+const PQTYPE = VERSION < v"0.4-" ? PriorityQueue{QueuedWorkerTask,Float64} : PriorityQueue{QueuedWorkerTask,Float64, ForwardOrdering}
 if VERSION < v"0.4-"
     emptypq() = PriorityQueue{QueuedWorkerTask,Float64}()
 else
