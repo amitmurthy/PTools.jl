@@ -1,4 +1,5 @@
 using Base.Collections
+import Base.Order: ForwardOrdering
 
 export  num_remotes, prep_remotes,
         execute_worker_task, queue_worker_task, dequeue_worker_task, set_priorities, 
@@ -53,9 +54,17 @@ end
 
 # Queues for distributing tasks
 # TODO: use priorityqueues
-const _machine_tasks = Dict{ASCIIString, PriorityQueue{QueuedWorkerTask,Float64}}()
-const _procid_tasks = Dict{Int, PriorityQueue{QueuedWorkerTask, Float64}}()
-const _any_tasks = PriorityQueue{QueuedWorkerTask,Float64}()
+
+const PQTYPE = VERSION < v"0.4-" ? PriorityQueue{QueuedWorkerTask,Float64} : PriorityQueue{QueuedWorkerTask,Float64, ForwardOrdering}
+if VERSION < v"0.4-"
+    emptypq() = PriorityQueue{QueuedWorkerTask,Float64}()
+else
+    emptypq() = PriorityQueue(QueuedWorkerTask,Float64)
+end
+
+const _machine_tasks = Dict{ASCIIString, PQTYPE}()
+const _procid_tasks = Dict{Int, PQTYPE}()
+const _any_tasks = emptypq()
 
 function _remap_macs_to_procs(macs)
     available_macs = filter(x->(x in _all_remote_names), macs)
@@ -81,12 +90,12 @@ function queue_worker_task(t::QueuedWorkerTask)
     _start_feeders()
 end
 function _queue_worker_task(t::QueuedWorkerTask, procid::Int)
-    !haskey(_procid_tasks, procid) && (_procid_tasks[procid] = PriorityQueue{QueuedWorkerTask,Float64}())
+    !haskey(_procid_tasks, procid) && (_procid_tasks[procid] = emptypq())
     (_procid_tasks[procid])[t] = Inf
 end
 _queue_worker_task(t::QueuedWorkerTask, procid_list::Vector{Int}) = for procid in procid_list _queue_worker_task(t, procid) end
 function _queue_worker_task(t::QueuedWorkerTask, machine::ASCIIString)
-    !haskey(_machine_tasks, machine) && (_machine_tasks[machine] = PriorityQueue{QueuedWorkerTask,Float64}())
+    !haskey(_machine_tasks, machine) && (_machine_tasks[machine] = emptypq())
     (_machine_tasks[machine])[t] = Inf
 end
 _queue_worker_task(t::QueuedWorkerTask, machine_list::Vector{ASCIIString}) = for machine in _remap_macs_to_procs(machine_list) _queue_worker_task(t, machine) end
@@ -143,7 +152,7 @@ function _start_feeders()
 end
 
 function _fetch_tasks(proc_id::Int, ip::String, hn::String, onlypeek::Bool=false)
-    v = PriorityQueue{PriorityQueue,Float64}()
+    v = emptypq()
     function add_to_fp(q)
         (length(q) > 0) && (v[q] = peek(q)[2])
     end
