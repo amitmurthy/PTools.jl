@@ -76,7 +76,7 @@ end
 function execute_worker_task(t::QueuedWorkerTask)
     r = RemoteRef()
     function cb(w::WorkerTask, ret)
-        put(r, ret)
+        put!(r, ret)
     end
     t.callback = cb
     queue_worker_task(t)
